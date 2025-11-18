@@ -1,0 +1,7 @@
+1. Add Accounts (create/check balance) - Done
+2. Deposit / Withdraw endpoints
+3️. Transaction history
+4️. Data validation
+5️. Convert in-memory to EF Core SQLite
+6️. Add Unit Tests (xUnit or MSTest)
+7️. Add Authentication (JWT)
