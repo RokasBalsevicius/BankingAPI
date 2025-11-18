@@ -41,5 +41,50 @@ public class AccountService : IAccountService
         return _repo.GetAccounts(customerId);
     }
 
+    public Transaction Deposit(int customerId, int accountId, DepositDto dto)
+    {
+        var account = _repo.GetAccount(customerId, accountId) ?? throw new Exception("Account not found.");
+        if (dto.Amount <= 0)
+        {
+            throw new Exception("Deposit amount must be positive");
+        }
 
+        account.Balance += dto.Amount;
+
+        var transaction = new Transaction
+        {
+            Id = account.Transactions.Any() ? account.Transactions.Max(t => t.Id) + 1 : 1,
+            Amount = dto.Amount,
+            Description = dto.Description,
+            Type = "Deposit"
+        };
+        account.Transactions.Add(transaction);
+        _repo.Update(account);
+        return transaction;
+    }
+
+    public Transaction Withdrawal(int customerId, int accountId, WithdrawalDto dto)
+    {
+        var account = _repo.GetAccount(customerId, accountId) ?? throw new Exception("Account not found.");
+
+        if (account.Balance <= 0)
+        {
+            throw new Exception($"No available balance in the '{account.Type}' account");
+        }
+
+        account.Balance -= dto.Amount;
+
+        var transaction = new Transaction
+        {
+            Id = account.Transactions.Any() ? account.Transactions.Max(t => t.Id) + 1 : 1,
+            Amount = dto.Amount,
+            Description = dto.Description,
+            Type = "Withdrawal"
+        };
+
+        account.Transactions.Add(transaction);
+        _repo.Update(account);
+        return transaction;
+
+    }
 }

@@ -47,4 +47,32 @@ public class AccountController : ControllerBase
         }
         return Ok(account);
     }
+
+    [HttpPost("{accountId}/deposit")]
+    public IActionResult Deposit(int customerId, int accountId, DepositDto dto)
+    {
+        try
+        {
+            var transaction = _service.Deposit(customerId, accountId, dto);
+            return Ok(transaction);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{accountId}/withdraw")]
+    public IActionResult Withdrawal(int customerId, int accountId, WithdrawalDto dto)
+    {
+        try
+        {
+            var transaction = _service.Withdrawal(customerId, accountId, dto);
+            return Ok(transaction);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }

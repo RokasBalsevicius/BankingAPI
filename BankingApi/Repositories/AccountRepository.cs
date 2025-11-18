@@ -36,4 +36,9 @@ public class AccountRepository : IAccountRepository
     {
         return _db.Customers.FirstOrDefault(c => c.Id == customerId)?.Accounts ?? Enumerable.Empty<Account>();
     }
+
+    public void Update(Account account)
+    {
+        
+    }
 }
