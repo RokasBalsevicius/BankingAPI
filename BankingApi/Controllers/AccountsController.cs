@@ -18,17 +18,9 @@ public class AccountController : ControllerBase
     [HttpPost]
     public IActionResult CreateAccount(int customerId, CreateAccountDto dto)
     {
-        try
-        {
-            var account = _service.CreateAccount(customerId, dto);
-            return CreatedAtAction(nameof(GetAccount),
-            new { customerId = customerId, accountId = account.Id },
-            account);
-        }
-        catch (Exception ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var account = _service.CreateAccount(customerId, dto);
+        return CreatedAtAction(nameof(GetAccount), new { customerId = customerId, accountId = account.Id }, account);
+
     }
 
     [HttpGet]
@@ -43,7 +35,7 @@ public class AccountController : ControllerBase
         var account = _service.GetAccount(customerId, accountId);
         if (account == null)
         {
-            return NotFound();
+            throw new KeyNotFoundException("Account not found");
         }
         return Ok(account);
     }
@@ -51,28 +43,18 @@ public class AccountController : ControllerBase
     [HttpPost("{accountId}/deposit")]
     public IActionResult Deposit(int customerId, int accountId, DepositDto dto)
     {
-        try
-        {
-            var transaction = _service.Deposit(customerId, accountId, dto);
-            return Ok(transaction);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        return Ok(_service.Deposit(customerId, accountId, dto));
     }
 
     [HttpPost("{accountId}/withdraw")]
     public IActionResult Withdrawal(int customerId, int accountId, WithdrawalDto dto)
     {
-        try
-        {
-            var transaction = _service.Withdrawal(customerId, accountId, dto);
-            return Ok(transaction);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        return Ok(_service.Withdrawal(customerId, accountId, dto));
+    }
+
+    [HttpPost("transfer")]
+    public ActionResult<InternalTransferResultDto> InternalTransfer(int customerId, InternalTransactionDto dto)
+    {
+        return Ok(_service.InternalTransfer(customerId, dto));
     }
 }

@@ -23,7 +23,7 @@ public class AccountService : IAccountService
         var customer = _customerRepo.GetById(customerId);
         if (customer == null)
         {
-            throw new Exception("Customer not found");
+            throw new KeyNotFoundException("Customer not found");
         }
         var account = new Account
         {
@@ -46,10 +46,10 @@ public class AccountService : IAccountService
 
     public Transaction Deposit(int customerId, int accountId, DepositDto dto)
     {
-        var account = _repo.GetAccount(customerId, accountId) ?? throw new Exception("Account not found.");
+        var account = _repo.GetAccount(customerId, accountId) ?? throw new KeyNotFoundException("Account not found.");
         if (dto.Amount <= 0)
         {
-            throw new Exception("Deposit amount must be positive");
+            throw new ArgumentException("Deposit amount must be positive");
         }
 
         account.Balance += dto.Amount;
@@ -69,11 +69,11 @@ public class AccountService : IAccountService
 
     public Transaction Withdrawal(int customerId, int accountId, WithdrawalDto dto)
     {
-        var account = _repo.GetAccount(customerId, accountId) ?? throw new Exception("Account not found.");
+        var account = _repo.GetAccount(customerId, accountId) ?? throw new KeyNotFoundException("Account not found.");
 
-        if (account.Balance <= 0)
+        if (account.Balance <= dto.Amount)
         {
-            throw new Exception($"No available balance in the '{account.Type}' account");
+            throw new ArgumentException($"Insufficient balance.");
         }
 
         account.Balance -= dto.Amount;
@@ -90,6 +90,49 @@ public class AccountService : IAccountService
         account.Transactions.Add(transaction);
         _repo.Update(account);
         return transaction;
+    }
 
+    public InternalTransferResultDto InternalTransfer(int customerId, InternalTransactionDto dto)
+    {
+        var accountToDebit = _repo.GetAccount(customerId, dto.FromAccountId) ?? throw new KeyNotFoundException("Account not found");
+        var accountToCredit = _repo.GetAccount(customerId, dto.ToAccountId) ?? throw new KeyNotFoundException("Account not found");
+        if (accountToDebit.Balance < dto.Amount)
+        {
+            throw new ArgumentException("Insufficient balance in account to debit");
+        }
+
+        accountToDebit.Balance -= dto.Amount;
+        accountToCredit.Balance += dto.Amount;
+
+        var baseId = _db.Transactions.Any() ? _db.Transactions.Max(t => t.Id) + 1 : 1;
+
+        var debitTransaction = new Transaction
+        {
+            Id = baseId,
+            Amount = dto.Amount,
+            Description = dto.Description,
+            Type = "Withdrawal"
+        };
+
+        var creditTransaction = new Transaction
+        {
+            Id = baseId + 1,
+            Amount = dto.Amount,
+            Description = dto.Description,
+            Type = "Deposit"
+        };
+
+        _db.Transactions.Add(debitTransaction);
+        _db.Transactions.Add(creditTransaction);
+        accountToDebit.Transactions.Add(debitTransaction);
+        accountToCredit.Transactions.Add(creditTransaction);
+        _repo.Update(accountToDebit);
+        _repo.Update(accountToCredit);
+
+        return new InternalTransferResultDto
+        {
+            DebitTransaction = debitTransaction,
+            CreditTransaction = creditTransaction
+        };
     }
 }

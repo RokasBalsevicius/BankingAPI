@@ -21,7 +21,7 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseMiddleware<ErrorHandlingMiddleware>();  // <-- IMPORTANT
+app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.MapControllers();
 

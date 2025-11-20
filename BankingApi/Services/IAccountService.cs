@@ -10,4 +10,5 @@ public interface IAccountService
     Account? GetAccount(int customerId, int accountId);
     Transaction Deposit(int customerId, int accountId, DepositDto dto);
     Transaction Withdrawal(int customerId, int accountId, WithdrawalDto dto);
+    InternalTransferResultDto InternalTransfer(int customerId, InternalTransactionDto dto);
 }
