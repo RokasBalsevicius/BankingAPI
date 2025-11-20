@@ -32,9 +32,9 @@ public class CustomersController : ControllerBase
     public IActionResult GetCustomer(int id)
     {
         var customer = _service.GetCustomer(id);
-        if (customer is null)
+        if (customer == null)
         {
-            return NotFound();
+            throw new KeyNotFoundException("Customer not found.");
         }
         return Ok(customer);
     }

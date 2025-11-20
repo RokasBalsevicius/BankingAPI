@@ -135,4 +135,22 @@ public class AccountService : IAccountService
             CreditTransaction = creditTransaction
         };
     }
+
+    public CustomerTransactionsHistoryResultDto GetTransactionsHistory(int customerId)
+    {
+        var customer = _customerRepo.GetById(customerId) ?? throw new ArgumentException("Customer not found");
+        if (customer.Accounts == null) {
+            throw new ArgumentException("Accounts not found");
+        }
+
+        return new CustomerTransactionsHistoryResultDto
+        {
+            CustomerId = customer.Id,
+            Accounts = customer.Accounts.Select(a => new AccountTransactionsDto
+            {
+                AccountId = a.Id,
+                Transactions = a.Transactions
+            })
+        };
+    }
 }

@@ -57,4 +57,10 @@ public class AccountController : ControllerBase
     {
         return Ok(_service.InternalTransfer(customerId, dto));
     }
+
+    [HttpGet("history")]
+    public ActionResult<CustomerTransactionsHistoryResultDto> GetTransactionsHistory(int customerId)
+    {
+        return Ok(_service.GetTransactionsHistory(customerId));
+    }
 }
