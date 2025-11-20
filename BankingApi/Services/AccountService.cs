@@ -1,6 +1,7 @@
 using BankingApi.DTOs;
 using BankingApi.Models;
 using BankingApi.Repositories;
+using BankingApi.Database;
 
 namespace BankingApi.Services;
 
@@ -8,11 +9,13 @@ public class AccountService : IAccountService
 {
     private readonly IAccountRepository _repo;
     private readonly ICustomerRepository _customerRepo;
+    private readonly BankingDb _db;
 
-    public AccountService(IAccountRepository repo, ICustomerRepository customerRepo)
+    public AccountService(IAccountRepository repo, ICustomerRepository customerRepo, BankingDb db)
     {
         _repo = repo;
         _customerRepo = customerRepo;
+        _db = db;
     }
 
     public Account CreateAccount(int customerId, CreateAccountDto dto)
@@ -53,11 +56,12 @@ public class AccountService : IAccountService
 
         var transaction = new Transaction
         {
-            Id = account.Transactions.Any() ? account.Transactions.Max(t => t.Id) + 1 : 1,
+            Id = _db.Transactions.Any() ? _db.Transactions.Max(t => t.Id) + 1 : 1,
             Amount = dto.Amount,
             Description = dto.Description,
             Type = "Deposit"
         };
+        _db.Transactions.Add(transaction);
         account.Transactions.Add(transaction);
         _repo.Update(account);
         return transaction;
@@ -76,12 +80,13 @@ public class AccountService : IAccountService
 
         var transaction = new Transaction
         {
-            Id = account.Transactions.Any() ? account.Transactions.Max(t => t.Id) + 1 : 1,
+            Id = _db.Transactions.Any() ? _db.Transactions.Max(t => t.Id) + 1 : 1,
             Amount = dto.Amount,
             Description = dto.Description,
             Type = "Withdrawal"
         };
 
+        _db.Transactions.Add(transaction);
         account.Transactions.Add(transaction);
         _repo.Update(account);
         return transaction;

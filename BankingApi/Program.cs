@@ -1,6 +1,7 @@
 using BankingApi.Database;
 using BankingApi.Repositories;
 using BankingApi.Services;
+using BankingApi.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,9 +17,12 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
-app.MapControllers();
 
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.UseMiddleware<ErrorHandlingMiddleware>();  // <-- IMPORTANT
+
+app.MapControllers();
 
 app.Run();
