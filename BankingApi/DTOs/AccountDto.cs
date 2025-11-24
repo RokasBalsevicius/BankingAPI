@@ -7,3 +7,5 @@ public class AccountDto
     public string Type { get; set; } = "";
     public decimal Balance { get; set; }
 }
+
+//not used?

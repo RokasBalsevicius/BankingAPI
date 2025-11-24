@@ -51,6 +51,10 @@ public class AccountService : IAccountService
         {
             throw new ArgumentException("Deposit amount must be positive");
         }
+        if (dto.Amount > 10_000)
+        {
+            throw new ArgumentException("Deposit limit exceeded");
+        }
 
         account.Balance += dto.Amount;
 
@@ -74,6 +78,10 @@ public class AccountService : IAccountService
         if (account.Balance <= dto.Amount)
         {
             throw new ArgumentException($"Insufficient balance.");
+        }
+        if (dto.Amount > 7_000)
+        {
+            throw new ArgumentException("Withdrawal amount exceeded");
         }
 
         account.Balance -= dto.Amount;
@@ -99,6 +107,10 @@ public class AccountService : IAccountService
         if (accountToDebit.Balance < dto.Amount)
         {
             throw new ArgumentException("Insufficient balance in account to debit");
+        }
+        if (dto.FromAccountId == dto.ToAccountId)
+        {
+            throw new ArgumentException("Cannot transfer to the same account");
         }
 
         accountToDebit.Balance -= dto.Amount;
