@@ -1,5 +1,3 @@
-using BankingApi.Models;
-
 namespace BankingApi.DTOs;
 
 
@@ -12,6 +10,6 @@ public class CustomerTransactionsHistoryResultDto{
 public class AccountTransactionsDto
 {
     public int AccountId { get; set; }
-    public IEnumerable<Transaction> Transactions { get; set; }
+    public IEnumerable<TransactionResponseDto> Transactions { get; set; }
 }
 

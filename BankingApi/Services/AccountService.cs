@@ -1,7 +1,6 @@
 using BankingApi.DTOs;
 using BankingApi.Models;
 using BankingApi.Repositories;
-using BankingApi.Database;
 
 namespace BankingApi.Services;
 
@@ -9,44 +8,47 @@ public class AccountService : IAccountService
 {
     private readonly IAccountRepository _repo;
     private readonly ICustomerRepository _customerRepo;
-    private readonly BankingDb _db;
 
-    public AccountService(IAccountRepository repo, ICustomerRepository customerRepo, BankingDb db)
+    public AccountService(IAccountRepository repo, ICustomerRepository customerRepo)
     {
         _repo = repo;
         _customerRepo = customerRepo;
-        _db = db;
     }
 
-    public Account CreateAccount(int customerId, CreateAccountDto dto)
+    public AccountResponseDto CreateAccount(int customerId, CreateAccountDto dto)
     {
         var customer = _customerRepo.GetById(customerId);
         if (customer == null)
         {
             throw new KeyNotFoundException("Customer not found");
         }
-        var account = new Account
+        var account = _repo.AddAccount(customerId, new Account
         {
             Type = dto.Type,
             Balance = 0
-        };
+        });
 
-        return _repo.AddAccount(customerId, account);
+        return new AccountResponseDto
+        {
+            Id = account.Id,
+            Type = account.Type,
+            Balance = account.Balance
+        };
     }
 
-    public Account? GetAccount(int customerId, int accountId)
+    public AccountResponseDto? GetAccount(int customerId, int accountId)
     {
         return _repo.GetAccount(customerId, accountId);
     }
 
-    public IEnumerable<Account> GetAccounts(int customerId)
+    public IEnumerable<AccountResponseDto> GetAccounts(int customerId)
     {
         return _repo.GetAccounts(customerId);
     }
 
-    public Transaction Deposit(int customerId, int accountId, DepositDto dto)
+    public TransactionResponseDto Deposit(int customerId, int accountId, DepositDto dto)
     {
-        var account = _repo.GetAccount(customerId, accountId) ?? throw new KeyNotFoundException("Account not found.");
+        var account = _repo.GetAccountEntity(customerId, accountId) ?? throw new KeyNotFoundException("Account not found.");
         if (dto.Amount <= 0)
         {
             throw new ArgumentException("Deposit amount must be positive");
@@ -60,20 +62,29 @@ public class AccountService : IAccountService
 
         var transaction = new Transaction
         {
-            Id = _db.Transactions.Any() ? _db.Transactions.Max(t => t.Id) + 1 : 1,
             Amount = dto.Amount,
             Description = dto.Description,
-            Type = "Deposit"
+            Type = "Deposit",
+            AccountId = account.Id
         };
-        _db.Transactions.Add(transaction);
+
+
         account.Transactions.Add(transaction);
         _repo.Update(account);
-        return transaction;
+        return new TransactionResponseDto
+        {
+            Id = transaction.Id,
+            Timestamp = transaction.Timestamp,
+            Amount = transaction.Amount,
+            Description = transaction.Description,
+            Type = transaction.Type,
+            AccountId = transaction.AccountId
+        };
     }
 
-    public Transaction Withdrawal(int customerId, int accountId, WithdrawalDto dto)
+    public TransactionResponseDto Withdrawal(int customerId, int accountId, WithdrawalDto dto)
     {
-        var account = _repo.GetAccount(customerId, accountId) ?? throw new KeyNotFoundException("Account not found.");
+        var account = _repo.GetAccountEntity(customerId, accountId) ?? throw new KeyNotFoundException("Account not found.");
 
         if (account.Balance <= dto.Amount)
         {
@@ -88,22 +99,29 @@ public class AccountService : IAccountService
 
         var transaction = new Transaction
         {
-            Id = _db.Transactions.Any() ? _db.Transactions.Max(t => t.Id) + 1 : 1,
             Amount = dto.Amount,
             Description = dto.Description,
-            Type = "Withdrawal"
+            Type = "Withdrawal",
+            AccountId = account.Id
         };
 
-        _db.Transactions.Add(transaction);
         account.Transactions.Add(transaction);
         _repo.Update(account);
-        return transaction;
+        return new TransactionResponseDto
+        {
+            Id = transaction.Id,
+            Timestamp = transaction.Timestamp,
+            Amount = transaction.Amount,
+            Description = transaction.Description,
+            Type = transaction.Type,
+            AccountId = transaction.AccountId
+        };
     }
 
     public InternalTransferResultDto InternalTransfer(int customerId, InternalTransactionDto dto)
     {
-        var accountToDebit = _repo.GetAccount(customerId, dto.FromAccountId) ?? throw new KeyNotFoundException("Account not found");
-        var accountToCredit = _repo.GetAccount(customerId, dto.ToAccountId) ?? throw new KeyNotFoundException("Account not found");
+        var accountToDebit = _repo.GetAccountEntity(customerId, dto.FromAccountId) ?? throw new KeyNotFoundException("Account not found");
+        var accountToCredit = _repo.GetAccountEntity(customerId, dto.ToAccountId) ?? throw new KeyNotFoundException("Account not found");
         if (accountToDebit.Balance < dto.Amount)
         {
             throw new ArgumentException("Insufficient balance in account to debit");
@@ -116,26 +134,22 @@ public class AccountService : IAccountService
         accountToDebit.Balance -= dto.Amount;
         accountToCredit.Balance += dto.Amount;
 
-        var baseId = _db.Transactions.Any() ? _db.Transactions.Max(t => t.Id) + 1 : 1;
-
         var debitTransaction = new Transaction
         {
-            Id = baseId,
             Amount = dto.Amount,
             Description = dto.Description,
-            Type = "Withdrawal"
+            Type = "Withdrawal",
+            AccountId = accountToDebit.Id
         };
 
         var creditTransaction = new Transaction
         {
-            Id = baseId + 1,
             Amount = dto.Amount,
             Description = dto.Description,
-            Type = "Deposit"
+            Type = "Deposit",
+            AccountId = accountToCredit.Id
         };
 
-        _db.Transactions.Add(debitTransaction);
-        _db.Transactions.Add(creditTransaction);
         accountToDebit.Transactions.Add(debitTransaction);
         accountToCredit.Transactions.Add(creditTransaction);
         _repo.Update(accountToDebit);
@@ -143,14 +157,30 @@ public class AccountService : IAccountService
 
         return new InternalTransferResultDto
         {
-            DebitTransaction = debitTransaction,
-            CreditTransaction = creditTransaction
+            DebitTransaction = new TransactionResponseDto
+            {
+                Id = debitTransaction.Id,
+                Timestamp = debitTransaction.Timestamp,
+                Amount = debitTransaction.Amount,
+                Description = debitTransaction.Description,
+                Type = debitTransaction.Type,
+                AccountId = debitTransaction.AccountId
+            },
+            CreditTransaction = new TransactionResponseDto
+            {
+                Id = creditTransaction.Id,
+                Timestamp = creditTransaction.Timestamp,
+                Amount = creditTransaction.Amount,
+                Description = creditTransaction.Description,
+                Type = creditTransaction.Type,
+                AccountId = creditTransaction.AccountId
+            }
         };
     }
 
     public CustomerTransactionsHistoryResultDto GetTransactionsHistory(int customerId)
     {
-        var customer = _customerRepo.GetById(customerId) ?? throw new ArgumentException("Customer not found");
+        var customer = _customerRepo.GetByIdEntity(customerId) ?? throw new ArgumentException("Customer not found");
         if (customer.Accounts == null) {
             throw new ArgumentException("Accounts not found");
         }
@@ -161,8 +191,16 @@ public class AccountService : IAccountService
             Accounts = customer.Accounts.Select(a => new AccountTransactionsDto
             {
                 AccountId = a.Id,
-                Transactions = a.Transactions
-            })
+                Transactions = a.Transactions.Select(t => new TransactionResponseDto
+                {
+                    Id = t.Id,
+                    Timestamp = t.Timestamp,
+                    Amount = t.Amount,
+                    Description = t.Description,
+                    Type = t.Type,
+                    AccountId = t.AccountId
+                }).ToList()
+            }).ToList()
         };
     }
 }
